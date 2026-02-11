@@ -36,22 +36,19 @@ class UserProfile(models.Model):
 
     email_verified = models.BooleanField(default=False)
 
-    is_vip = models.BooleanField(default=False)
-    vip_expires_at = models.DateTimeField(blank=True, null=True)
 
+    target_band_score = models.FloatField(blank=True, null=True)
+    target_date = models.DateField(blank=True, null=True)
+    listening_score = models.FloatField(default=0)
+    reading_score = models.FloatField(default=0)
+    writing_score = models.FloatField(default=0)
+    speaking_score = models.FloatField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.email}"
 
-    def is_vip_active(self):
-        if not self.is_vip or not self.vip_expires_at:
-            return False
-        return self.vip_expires_at > timezone.now()
-
-    def has_unlimited_coins(self):
-        return self.is_vip_active()
 
     class Meta:
         ordering = ['-created_at']

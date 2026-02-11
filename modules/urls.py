@@ -1,41 +1,26 @@
-# from django.urls import path
-# from .views import (
-#     TestCategoryListView, TestListView, TestDetailView,
-#     StartTestView, SubmitAnswerView, CompleteTestView,
-#     UserTestAttemptsView, TestAttemptDetailView, TestStatsView,
-#     LeaderboardView, RecommendationsView, StudyMaterialListView,
-#     StudyMaterialDetailView, AccessMaterialView, ProgressAnalyticsView,
-#     TestReviewView, AdminTestCategoryListCreateView,
-#     AdminTestDetailView, AdminAllAttemptsView
-# )
-#
-# app_name = 'modules'
-#
-# urlpatterns = [
-#     # Public endpoints
-#     path('categories/', TestCategoryListView.as_view(), name='category-list'),
-#     path('tests/', TestListView.as_view(), name='test-list'),
-#     path('tests/<int:id>/', TestDetailView.as_view(), name='test-detail'),
-#     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
-#
-#     # Study materials
-#     path('materials/', StudyMaterialListView.as_view(), name='material-list'),
-#     path('materials/<int:id>/', StudyMaterialDetailView.as_view(), name='material-detail'),
-#
-#     # Authenticated endpoints
-#     path('tests/start/', StartTestView.as_view(), name='start-test'),
-#     path('tests/submit-answer/', SubmitAnswerView.as_view(), name='submit-answer'),
-#     path('tests/complete/', CompleteTestView.as_view(), name='complete-test'),
-#     path('tests/my-attempts/', UserTestAttemptsView.as_view(), name='my-attempts'),
-#     path('tests/attempts/<int:id>/', TestAttemptDetailView.as_view(), name='attempt-detail'),
-#     path('tests/stats/', TestStatsView.as_view(), name='test-stats'),
-#     path('tests/recommendations/', RecommendationsView.as_view(), name='recommendations'),
-#     path('tests/attempts/<int:id>/review/', TestReviewView.as_view(), name='test-review'),
-#     path('materials/access/', AccessMaterialView.as_view(), name='access-material'),
-#     path('analytics/progress/', ProgressAnalyticsView.as_view(), name='progress-analytics'),
-#
-#     # Admin endpoints
-#     path('admin/categories/', AdminTestCategoryListCreateView.as_view(), name='admin-categories'),
-#     path('admin/tests/<int:id>/', AdminTestDetailView.as_view(), name='admin-test-detail'),
-#     path('admin/attempts/', AdminAllAttemptsView.as_view(), name='admin-attempts'),
-# ]
+from django.urls import path
+from .views import (
+    ListeningTestListCreateAPIView, ListeningTestRetrieveUpdateDestroyAPIView,
+    ReadingPassageListCreateAPIView, ReadingPassageRetrieveUpdateDestroyAPIView,
+    WritingTaskListCreateAPIView, WritingTaskRetrieveUpdateDestroyAPIView,
+    SmartArticleListCreateAPIView, SmartArticleRetrieveUpdateDestroyAPIView,
+    ListeningMaterialListCreateAPIView, ListeningMaterialRetrieveUpdateDestroyAPIView,
+    VocabularyWordListCreateAPIView, VocabularyWordRetrieveUpdateDestroyAPIView,
+    import_vocab_word
+                     )
+urlpatterns = [
+    path('listening-tests/', ListeningTestListCreateAPIView.as_view(), name='listening-test-list-create'),
+    path('listening-tests/<slug:slug>/', ListeningTestRetrieveUpdateDestroyAPIView.as_view(), name='listening-test-detail'),
+    path('reading-passages/', ReadingPassageListCreateAPIView.as_view(), name='reading-passage-list-create'),
+    path('reading-passages/<slug:slug>/', ReadingPassageRetrieveUpdateDestroyAPIView.as_view(),
+         name='reading-passage-detail'),
+    path('writing-tasks/', WritingTaskListCreateAPIView.as_view(), name='writing-task-list-create'),
+    path('writing-tasks/<slug:slug>/', WritingTaskRetrieveUpdateDestroyAPIView.as_view(), name='writing-task-detail'),
+    path('smart-articles/', SmartArticleListCreateAPIView.as_view(), name='smart-article-list-create'),
+    path('smart-articles/<slug:slug>/', SmartArticleRetrieveUpdateDestroyAPIView.as_view(), name='smart-article-detail'),
+    path('listening-materials/', ListeningMaterialListCreateAPIView.as_view(), name='listening-material-list-create'),
+    path('listening-materials/<slug:slug>/', ListeningMaterialRetrieveUpdateDestroyAPIView.as_view(), name='listening-material-detail'),
+    path('vocabulary-words/', VocabularyWordListCreateAPIView.as_view(), name='vocabulary-word-list-create'),
+    path('vocabulary-words/<int:id>/', VocabularyWordRetrieveUpdateDestroyAPIView.as_view(), name='vocabulary-word-detail'),
+    path('vocabulary/import/<int:pk>/', import_vocab_word, name='import_vocab_word'),
+]

@@ -32,15 +32,14 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user_email', 'is_vip', 'vip_status', 'created_at')
-    list_filter = ('is_vip', 'created_at')
+    list_display = ('user_email', 'created_at')
+    list_filter = ('created_at',)
     search_fields = ('user__email', 'user__username')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
-        ('User Information', {'fields': ('user',)}),
-        ('VIP Status', {'fields': ('is_vip', 'vip_expires_at')}),
+        ('User Information', {'fields': ('user', 'target_band_score', 'target_date', 'listening_score', 'reading_score', 'writing_score', 'speaking_score')}),
         ('Timestamps', {'fields': ('created_at', 'updated_at')}),
     )
     
@@ -48,38 +47,5 @@ class UserProfileAdmin(admin.ModelAdmin):
         return obj.user.email
     user_email.short_description = 'Email'
     user_email.admin_order_field = 'user__email'
+
     
-    def vip_status(self, obj):
-        if obj.is_vip_active():
-            return format_html(
-                '<span style="color: green; font-weight: bold;">✓ Active ({})</span>',
-                obj.vip_expires_at.strftime('%Y-%m-%d') if obj.vip_expires_at else 'No expiry'
-            )
-        elif obj.is_vip:
-            return '<span style="color: orange; font-weight: bold;">⚠ Expired</span>'
-        return '<span style="color: red;">✗ Not VIP</span>'
-    vip_status.short_description = 'VIP Status'
-    
-    actions = ['activate_vip', 'deactivate_vip']
-    
-    def activate_vip(self, request, queryset):
-        from django.contrib import messages
-        from django.utils import timezone
-        from datetime import timedelta
-        
-        count = 0
-        for profile in queryset:
-            profile.is_vip = True
-            profile.vip_expires_at = timezone.now() + timedelta(days=30)
-            profile.save()
-            count += 1
-        
-        messages.success(request, f'{count} ta foydalanuvchi VIP ga aktive qilindi')
-    activate_vip.short_description = 'VIP statusini aktive qilish (30 kun)'
-    
-    def deactivate_vip(self, request, queryset):
-        from django.contrib import messages
-        
-        count = queryset.update(is_vip=False, vip_expires_at=None)
-        messages.success(request, f'{count} ta foydalanuvchining VIP statusi o\'chirildi')
-    deactivate_vip.short_description = 'VIP statusini o\'chirish'

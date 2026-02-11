@@ -71,8 +71,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('user_info', 'email_verified', 'created_at')
-        read_only_fields = ('created_at',)
+        fields = ('user_info', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
 
     def get_user_info(self, obj):
         return {
@@ -82,44 +82,45 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'first_name': obj.user.first_name,
             'last_name': obj.user.last_name,
             'role': obj.user.role,
-            'is_vip': obj.is_vip,
-            'vip_expires_at': obj.vip_expires_at,
             'email_verified': obj.email_verified,
             'date_joined': obj.user.date_joined,
-            'last_login': obj.user.last_login
+            'last_login': obj.user.last_login,
+            'target_band_score': obj.target_band_score,
+            'target_date': obj.target_date,
+            'listening_score': obj.listening_score,
+            'reading_score': obj.reading_score,
+            'writing_score': obj.writing_score,
+            'speaking_score': obj.speaking_score
         }
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    current_password = serializers.CharField(write_only=True, required=False)
-    new_password = serializers.CharField(write_only=True, required=False, validators=[validate_password])
+    target_band_score = serializers.FloatField(required=False, allow_null=True)
+    target_date = serializers.DateField(required=False, allow_null=True)
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'current_password', 'new_password')
+        fields = ('first_name', 'last_name', 'target_band_score', 'target_date')
 
     def validate(self, attrs):
-        if 'new_password' in attrs and 'current_password' not in attrs:
-            raise serializers.ValidationError("Yangi parol uchun joriy parolni kiriting")
-
-        if 'current_password' in attrs:
-            if not self.instance.check_password(attrs['current_password']):
-                raise serializers.ValidationError("Joriy parol noto'g'ri")
-
         return attrs
 
     def update(self, instance, validated_data):
-        current_password = validated_data.pop('current_password', None)
-        new_password = validated_data.pop('new_password', None)
+        target_band_score = validated_data.pop('target_band_score', None)
+        target_date = validated_data.pop('target_date', None)
 
         # Update user fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
-        if new_password:
-            instance.set_password(new_password)
+        # Update profile fields
+        if target_band_score is not None:
+            instance.userprofile.target_band_score = target_band_score
+        if target_date is not None:
+            instance.userprofile.target_date = target_date
 
         instance.save()
+        instance.userprofile.save()
         return instance
 
 

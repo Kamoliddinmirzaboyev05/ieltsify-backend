@@ -1,446 +1,567 @@
 from django.db import models
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-from django.core.validators import MinValueValidator, MaxValueValidator
-import uuid
-
-User = get_user_model()
+from django.core.validators import MinLengthValidator, URLValidator
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+from django.utils.text import slugify
 
 
-class TestCategory(models.Model):
-    """IELTS test kategoriyalari (Listening, Reading, Writing, Speaking)"""
-    
-    LISTENING = 'listening'
-    READING = 'reading'
-    WRITING = 'writing'
-    SPEAKING = 'speaking'
-    
-    CATEGORY_CHOICES = (
-        (LISTENING, 'Listening'),
-        (READING, 'Reading'),
-        (WRITING, 'Writing'),
-        (SPEAKING, 'Speaking'),
+class ListeningTest(models.Model):
+    title = models.CharField(
+        _("Sarlavha"),
+        max_length=200,
+        validators=[MinLengthValidator(5)],
+        help_text="Masalan: IELTS Listening Practice Test 1"
     )
-    
-    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES, unique=True)
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=100, blank=True, help_text="Icon class or URL")
-    color = models.CharField(max_length=20, default='#007bff', help_text="Category color")
-    is_active = models.BooleanField(default=True)
-    order = models.PositiveIntegerField(default=0, help_text="Display order")
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['order', 'name']
-        db_table = 'modules_test_category'
-    
-    def __str__(self):
-        return self.get_name_display()
 
-
-class Test(models.Model):
-    """IELTS testlari"""
-    
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    instructions = models.TextField(blank=True, help_text="Test instructions for users")
-    category = models.ForeignKey(TestCategory, on_delete=models.CASCADE, related_name='tests')
-    
-    # Test turlari
-    ACADEMIC = 'academic'
-    GENERAL_TRAINING = 'general_training'
-    
-    TEST_TYPE_CHOICES = (
-        (ACADEMIC, 'Academic'),
-        (GENERAL_TRAINING, 'General Training'),
+    slug = models.SlugField(
+        _("Slug"),
+        max_length=250,
+        unique=True,
+        blank=True,
+        help_text="URL uchun avtomatik generatsiya qilinadi (agar bo'sh qoldirilsa)"
     )
-    
-    test_type = models.CharField(max_length=20, choices=TEST_TYPE_CHOICES, default=ACADEMIC)
-    
-    # Difficultyl darajasi
-    EASY = 'easy'
-    MEDIUM = 'medium'
-    HARD = 'hard'
-    
-    DIFFICULTY_CHOICES = (
-        (EASY, 'Easy'),
-        (MEDIUM, 'Medium'),
-        (HARD, 'Hard'),
+
+    description = models.TextField(
+        _("Qisqacha tavsif"),
+        blank=True,
+        help_text="Test haqida qisqacha ma'lumot (ixtiyoriy)"
     )
-    
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default=MEDIUM)
-    
-    # Test haqida ma'lumotlar
-    duration_minutes = models.PositiveIntegerField(help_text="Test duration in minutes")
-    time_limit_minutes = models.PositiveIntegerField(help_text="Time limit for the test in minutes")
-    total_questions = models.PositiveIntegerField(default=0)
-    max_score = models.DecimalField(max_digits=5, decimal_places=2, default=9.0)
-    passing_score = models.DecimalField(max_digits=5, decimal_places=2, default=6.0, help_text="Minimum score to pass")
-    
-    # Narxlash
-    is_free = models.BooleanField(default=False)
-    is_premium = models.BooleanField(default=False, help_text="Premium testmi")
-    
-    # Status
-    is_active = models.BooleanField(default=True)
-    is_published = models.BooleanField(default=False)
-    
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_tests')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-        db_table = 'modules_test'
-    
-    def __str__(self):
-        return f"{self.title} ({self.get_category_display()})"
-    
-    def get_average_score(self):
-        """Testning o'rtacha ballari"""
-        attempts = self.attempts.filter(is_completed=True)
-        if attempts.exists():
-            return attempts.aggregate(models.Avg('score'))['score__avg']
-        return 0
-    
-    def get_total_attempts(self):
-        """Testni necha marta ishlaganliklari"""
-        return self.attempts.filter(is_completed=True).count()
 
-
-class Question(models.Model):
-    """Test savollari"""
-    
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='questions')
-    
-    # Savol turlari
-    MULTIPLE_CHOICE = 'multiple_choice'
-    TRUE_FALSE = 'true_false'
-    MATCHING = 'matching'
-    FILL_BLANK = 'fill_blank'
-    SHORT_ANSWER = 'short_answer'
-    ESSAY = 'essay'
-    RECORDING = 'recording'
-    
-    QUESTION_TYPE_CHOICES = (
-        (MULTIPLE_CHOICE, 'Multiple Choice'),
-        (TRUE_FALSE, 'True/False'),
-        (MATCHING, 'Matching'),
-        (FILL_BLANK, 'Fill in the Blank'),
-        (SHORT_ANSWER, 'Short Answer'),
-        (ESSAY, 'Essay'),
-        (RECORDING, 'Recording'),
+    html_file = models.FileField(
+        _("HTML fayl"),
+        upload_to="listening_tests/html/%Y/%m/",
+        help_text="Listening testning asosiy HTML fayli (audio + savollar bilan)"
     )
-    
-    question_type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES)
-    
-    # Savol matni
-    question_text = models.TextField()
-    passage_text = models.TextField(blank=True, help_text="Reading passage text for reading comprehension questions")
-    question_image = models.ImageField(upload_to='questions/images/', blank=True, null=True)
-    question_audio = models.FileField(upload_to='questions/audio/', blank=True, null=True)
-    audio_file = models.FileField(upload_to='questions/audio_files/', blank=True, null=True, help_text="Audio file for the question")
-    image = models.ImageField(upload_to='questions/images/', blank=True, null=True, help_text="Additional image for the question")
-    
-    # Savol raqami va tartibi
-    question_number = models.PositiveIntegerField(help_text="Question number in the test")
-    section = models.CharField(max_length=100, blank=True, help_text="Section name for grouping")
-    
-    # Qiyinlik darajasi
-    EASY = 'easy'
-    MEDIUM = 'medium'
-    HARD = 'hard'
-    
-    DIFFICULTY_CHOICES = (
-        (EASY, 'Easy'),
-        (MEDIUM, 'Medium'),
-        (HARD, 'Hard'),
+
+    cover_image = models.ImageField(
+        _("Muqova rasmi"),
+        upload_to="listening_tests/covers/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Test uchun muqova rasmi (ixtiyoriy)"
     )
-    
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default=MEDIUM)
-    
-    # Ballar
-    points = models.DecimalField(max_digits=5, decimal_places=2, default=1.0)
-    is_mandatory = models.BooleanField(default=False)
-    time_limit_seconds = models.PositiveIntegerField(blank=True, null=True, help_text="Time limit for this question in seconds")
-    order = models.PositiveIntegerField(default=0, help_text="Display order in test")
-    
-    # Qo'shimcha ma'lumotlar
-    explanation = models.TextField(blank=True, help_text="Explanation for the correct answer")
-    hint = models.TextField(blank=True, help_text="Hint for the student")
-    hints = models.JSONField(default=dict, blank=True, help_text="Multiple hints for the student")
-    correct_answer = models.TextField(blank=True, help_text="Correct answer for the question")
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['test', 'question_number']
-        unique_together = ['test', 'question_number']
-        db_table = 'modules_question'
-    
-    def __str__(self):
-        return f"Q{self.question_number}: {self.question_text[:50]}..."
 
-
-class AnswerOption(models.Model):
-    """Multiple choice savollar uchun variantlar"""
-    
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answer_options')
-    option_text = models.TextField()
-    text = models.TextField(blank=True, help_text="Additional text for the option")
-    option_image = models.ImageField(upload_to='answers/images/', blank=True, null=True)
-    
-    # To'g'ri javob belgisi
-    is_correct = models.BooleanField(default=False)
-    
-    # Variant harfi (A, B, C, D)
-    option_label = models.CharField(max_length=1, blank=True)
-    
-    # Tartib
-    order = models.PositiveIntegerField(default=0)
-    
-    # Qo'shimcha ma'lumotlar
-    explanation = models.TextField(blank=True, help_text="Explanation for this answer option")
-    
-    class Meta:
-        ordering = ['order']
-        db_table = 'modules_answer_option'
-    
-    def __str__(self):
-        return f"{self.option_label}: {self.option_text[:30]}..."
-
-
-class MatchingItem(models.Model):
-    """Matching savollar uchun itemlar"""
-    
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='matching_items')
-    
-    # Chap tomondagi item
-    left_item = models.CharField(max_length=500)
-    left_item_image = models.ImageField(upload_to='matching/left/', blank=True, null=True)
-    left_text = models.TextField(blank=True, help_text="Additional text for left item")
-    
-    # O'ng tomondagi item
-    right_item = models.CharField(max_length=500)
-    right_item_image = models.ImageField(upload_to='matching/right/', blank=True, null=True)
-    right_text = models.TextField(blank=True, help_text="Additional text for right item")
-    
-    # To'g'ri juftlik
-    is_correct_pair = models.BooleanField(default=False)
-    
-    # Tartib
-    pair_order = models.PositiveIntegerField(default=0)
-    order = models.PositiveIntegerField(default=0, help_text="Display order")
-    
-    class Meta:
-        ordering = ['pair_order']
-        db_table = 'modules_matching_item'
-    
-    def __str__(self):
-        return f"{self.left_item} <-> {self.right_item}"
-
-
-class TestAttempt(models.Model):
-    """Foydalanuvchining testni ishlashi"""
-    
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='test_attempts')
-    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='attempts')
-    
-    # Test holati
-    IN_PROGRESS = 'in_progress'
-    COMPLETED = 'completed'
-    ABANDONED = 'abandoned'
-    EXPIRED = 'expired'
-    
-    STATUS_CHOICES = (
-        (IN_PROGRESS, 'In Progress'),
-        (COMPLETED, 'Completed'),
-        (ABANDONED, 'Abandoned'),
-        (EXPIRED, 'Expired'),
+    difficulty = models.CharField(
+        _("Qiyinlik darajasi"),
+        max_length=20,
+        choices=[
+            ('easy', 'Easy (Band 5-6)'),
+            ('medium', 'Medium (Band 6-7)'),
+            ('hard', 'Hard (Band 7.5-9)'),
+        ],
+        default='medium',
     )
-    
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=IN_PROGRESS)
-    
-    # Vaqt
-    started_at = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(blank=True, null=True)
-    time_limit_minutes = models.PositiveIntegerField()
-    time_spent_seconds = models.PositiveIntegerField(default=0, help_text="Testga sarflangan vaqt (soniyalar)")
-    
-    # Natijalar
-    score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    percentage = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    correct_answers = models.PositiveIntegerField(default=0)
-    total_answered = models.PositiveIntegerField(default=0)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-started_at']
-        db_table = 'modules_test_attempt'
-    
-    def __str__(self):
-        return f"{self.user.email} - {self.test.title} ({self.get_status_display()})"
-    
-    def is_completed(self):
-        return self.status == self.COMPLETED
-    
-    def get_duration_minutes(self):
-        if self.completed_at:
-            delta = self.completed_at - self.started_at
-            return int(delta.total_seconds() / 60)
-        return 0
-    
-    def get_time_remaining_minutes(self):
-        if self.status == self.COMPLETED:
-            return 0
-        
-        elapsed = timezone.now() - self.started_at
-        remaining = self.time_limit_minutes - int(elapsed.total_seconds() / 60)
-        return max(0, remaining)
 
-
-class UserAnswer(models.Model):
-    """Foydalanuvchining javoblari"""
-    
-    attempt = models.ForeignKey(TestAttempt, on_delete=models.CASCADE, related_name='user_answers')
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    
-    # Javob turlari
-    selected_option = models.ForeignKey(AnswerOption, on_delete=models.SET_NULL, blank=True, null=True)
-    selected_answer = models.CharField(max_length=500, blank=True, help_text="Selected answer for the question")
-    text_answer = models.TextField(blank=True)
-    written_answer = models.TextField(blank=True, help_text="Written answer for the question")
-    recorded_answer = models.FileField(upload_to='answers/recordings/', blank=True, null=True)
-    
-    # Matching javoblari
-    matching_pairs = models.JSONField(default=dict, blank=True, help_text="For matching questions")
-    matching_answers = models.JSONField(default=dict, blank=True, help_text="Matching answers for the question")
-    
-    # To'g'ri javobmi
-    is_correct = models.BooleanField(blank=True, null=True)
-    points_earned = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    
-    # Vaqt
-    answered_at = models.DateTimeField(auto_now=True)
-    time_spent_seconds = models.PositiveIntegerField(default=0)
-    
-    class Meta:
-        unique_together = ['attempt', 'question']
-        db_table = 'modules_user_answer'
-    
-    def __str__(self):
-        return f"Answer for Q{self.question.question_number} in {self.attempt.uuid}"
-
-
-class TestResult(models.Model):
-    """Test natijalari tahlili"""
-    
-    attempt = models.OneToOneField(TestAttempt, on_delete=models.CASCADE, related_name='result')
-    
-    # Bandlar bo'yicha natijalar
-    listening_score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    reading_score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    writing_score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    speaking_score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    
-    # IELTS bandlari
-    listening_band = models.DecimalField(max_digits=3, decimal_places=1, blank=True, null=True)
-    reading_band = models.DecimalField(max_digits=3, decimal_places=1, blank=True, null=True)
-    writing_band = models.DecimalField(max_digits=3, decimal_places=1, blank=True, null=True)
-    speaking_band = models.DecimalField(max_digits=3, decimal_places=1, blank=True, null=True)
-    
-    # Umumiy IELTS balli
-    overall_band = models.DecimalField(max_digits=3, decimal_places=1, blank=True, null=True)
-    total_score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Total score out of max score")
-    max_score = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Maximum possible score")
-    percentage = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, help_text="Percentage score")
-    
-    # Tahlil
-    strengths = models.TextField(blank=True, help_text="AI-generated strengths analysis")
-    weaknesses = models.TextField(blank=True, help_text="AI-generated weaknesses analysis")
-    recommendations = models.TextField(blank=True, help_text="AI-generated recommendations")
-    feedback = models.TextField(blank=True, help_text="Overall feedback for the user")
-    
-    # Statistika
-    percentile = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    rank = models.PositiveIntegerField(blank=True, null=True)
-    total_participants = models.PositiveIntegerField(blank=True, null=True)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        db_table = 'modules_test_result'
-    
-    def __str__(self):
-        return f"Result for {self.attempt.user.email} - Overall: {self.overall_band}"
-
-
-class StudyMaterial(models.Model):
-    """O'quv materiallari"""
-    
-    title = models.CharField(max_length=200)
-    description = models.TextField()
-    content = models.TextField(blank=True, help_text="Material content for text materials")
-    category = models.ForeignKey(TestCategory, on_delete=models.CASCADE, related_name='materials')
-    
-    # Material turi
-    VIDEO = 'video'
-    PDF = 'pdf'
-    AUDIO = 'audio'
-    TEXT = 'text'
-    
-    MATERIAL_TYPE_CHOICES = (
-        (VIDEO, 'Video'),
-        (PDF, 'PDF'),
-        (AUDIO, 'Audio'),
-        (TEXT, 'Text'),
+    is_active = models.BooleanField(
+        _("Faolmi"),
+        default=True,
+        help_text="Faqat faol testlar talabalar tomonidan ko'rinadi"
     )
-    
-    material_type = models.CharField(max_length=10, choices=MATERIAL_TYPE_CHOICES)
-    
-    # Fayl
-    file = models.FileField(upload_to='materials/files/', blank=True, null=True)
-    url = models.URLField(blank=True, null=True)
-    video_url = models.URLField(blank=True, null=True, help_text="Video URL for video materials")
-    
-    # Narxlash
-    is_free = models.BooleanField(default=False)
-    is_premium = models.BooleanField(default=False, help_text="Premium material for VIP users")
-    
-    # Qiyinlik darajasi
-    EASY = 'easy'
-    MEDIUM = 'medium'
-    HARD = 'hard'
-    
-    DIFFICULTY_CHOICES = (
-        (EASY, 'Easy'),
-        (MEDIUM, 'Medium'),
-        (HARD, 'Hard'),
-    )
-    
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default=MEDIUM)
-    estimated_time_minutes = models.PositiveIntegerField(blank=True, null=True, help_text="Estimated time to complete the material")
-    order = models.PositiveIntegerField(default=0, help_text="Display order")
-    tags = models.JSONField(default=list, blank=True, help_text="Tags for the material")
-    
-    # Statistika
-    download_count = models.PositiveIntegerField(default=0)
-    view_count = models.PositiveIntegerField(default=0)
-    
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
+
+    created_at = models.DateTimeField(_("Yaratilgan sana"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("O'zgartirilgan sana"), auto_now=True)
+
     class Meta:
-        ordering = ['-created_at']
-        db_table = 'modules_study_material'
-    
+        verbose_name = _("Listening Test")
+        verbose_name_plural = _("Listening Testlari")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["is_active", "difficulty"]),
+        ]
+
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while ListeningTest.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+
+class ReadingPassage(models.Model):
+    title = models.CharField(
+        _("Sarlavha"),
+        max_length=200,
+        validators=[MinLengthValidator(5)],
+        help_text="Masalan: The Nature of Memory, Urbanization Trends"
+    )
+
+    slug = models.SlugField(
+        _("Slug"),
+        max_length=250,
+        unique=True,
+        blank=True,
+        help_text="URL uchun (agar bo'sh qoldirilsa avto-generatsiya qilinadi)"
+    )
+
+    html_content = models.FileField(
+        _("HTML fayl"),
+        upload_to="reading_passages/html/%Y/%m/",
+        help_text="Matn, sarlavhalar, rasmlar va formatlash HTML ichida bo'ladi"
+    )
+
+    cover_image = models.ImageField(
+        _("Muqova rasmi"),
+        upload_to="reading_passages/covers/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Passage uchun muqova/illustratsiya (ixtiyoriy)"
+    )
+
+    difficulty = models.CharField(
+        _("Qiyinlik darajasi"),
+        max_length=20,
+        choices=[
+            ('easy', 'Easy (Band 5-6)'),
+            ('medium', 'Medium (Band 6-7)'),
+            ('hard', 'Hard (Band 7.5-9)'),
+        ],
+        default='medium',
+    )
+
+    word_count = models.PositiveIntegerField(
+        _("So'zlar soni"),
+        blank=True,
+        null=True,
+        help_text="Matndagi taxminiy so'zlar soni (avto hisoblash mumkin)"
+    )
+
+    is_active = models.BooleanField(
+        _("Faolmi"),
+        default=True,
+        help_text="Faqat faol passage talabalar uchun ko'rinadi"
+    )
+
+    created_at = models.DateTimeField(_("Yaratilgan sana"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("O'zgartirilgan sana"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Reading Passage")
+        verbose_name_plural = _("Reading Passages")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["is_active", "difficulty"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_difficulty_display()})"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while ReadingPassage.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+
+        # Agar word_count hali kiritilmagan bo'lsa — keyinchalik signal orqali hisoblash mumkin
+        super().save(*args, **kwargs)
+
+
+class WritingTask(models.Model):
+    title = models.CharField(
+        _("Sarlavha / Mavzu"),
+        max_length=200,
+        validators=[MinLengthValidator(5)],
+        help_text="Masalan: Environment & Technology, Housing Trends in the UK"
+    )
+
+    slug = models.SlugField(
+        max_length=250,
+        unique=True,
+        blank=True,
+        help_text="URL uchun (bo'sh qoldirsangiz avto generatsiya qilinadi)"
+    )
+
+    # Umumiy ma'lumotlar
+    topic_category = models.CharField(
+        _("Mavzu kategoriyasi"),
+        max_length=100,
+        blank=True,
+        help_text="Masalan: Environment, Education, Technology, Health, Crime"
+    )
+
+    difficulty = models.CharField(
+        _("Taxminiy band darajasi"),
+        max_length=20,
+        choices=[
+            ('band_5_6', 'Band 5–6'),
+            ('band_6_7', 'Band 6–7'),
+            ('band_7_5_plus', 'Band 7.5+'),
+        ],
+        default='band_6_7',
+        blank=True,
+    )
+
+    # Task 1 maydonlari
+    task1_question = models.TextField(
+        _("Task 1 savoli (Graph/Chart/Process/Map)"),
+        blank=True,
+        validators=[MinLengthValidator(20)],
+        help_text="Masalan: The chart below shows the percentage of households..."
+    )
+
+    task1_image = models.ImageField(
+        _("Task 1 diagrammasi / rasmi"),
+        upload_to="writing/task1/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Graph, table, pie chart, bar chart, process diagram yoki map"
+    )
+
+    task1_word_count = models.PositiveSmallIntegerField(
+        _("Task 1 minimal so'zlar"),
+        default=150,
+        help_text="Odatda 150+"
+    )
+
+    task1_time_minutes = models.PositiveSmallIntegerField(
+        _("Task 1 vaqti (daqiqa)"),
+        default=20,
+    )
+
+    # Task 2 maydonlari
+    task2_question = models.TextField(
+        _("Task 2 savoli (Essay)"),
+        blank=True,
+        validators=[MinLengthValidator(30)],
+        help_text="Masalan: Some people think that technology makes life more complicated..."
+    )
+
+    task2_essay_type = models.CharField(
+        _("Task 2 essay turi"),
+        max_length=50,
+        choices=[
+            ('', '— tanlanmagan —'),
+            ('opinion', 'Agree / Disagree'),
+            ('discussion', 'Discuss both views'),
+            ('advantages_disadvantages', 'Advantages & Disadvantages'),
+            ('problem_solution', 'Problem & Solution'),
+            ('two_part', 'Two-part question'),
+        ],
+        default='',
+        blank=True,
+    )
+
+    task2_word_count = models.PositiveSmallIntegerField(
+        _("Task 2 minimal so'zlar"),
+        default=250,
+        help_text="Odatda 250+"
+    )
+
+    task2_time_minutes = models.PositiveSmallIntegerField(
+        _("Task 2 vaqti (daqiqa)"),
+        default=40,
+    )
+
+    is_active = models.BooleanField(_("Faol"), default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Writing Task (Task 1 + Task 2)"
+        verbose_name_plural = "Writing Tasklari"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while WritingTask.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def has_task1(self):
+        return bool(self.task1_question.strip())
+
+    def has_task2(self):
+        return bool(self.task2_question.strip())
+
+
+class SmartArticle(models.Model):
+    title = models.CharField(
+        _("Sarlavha"),
+        max_length=200,
+        validators=[MinLengthValidator(5)],
+        help_text="Masalan: Climate Change, The Benefits of Remote Work"
+    )
+
+    slug = models.SlugField(
+        max_length=250,
+        unique=True,
+        blank=True,
+        help_text="URL uchun (bo'sh qoldirsangiz avtomatik yaratiladi)"
+    )
+
+    content = models.TextField(
+        _("Maqola matni"),
+        validators=[MinLengthValidator(200)],
+        help_text="To'liq maqola matni (Markdown yoki oddiy text bo'lishi mumkin)"
+    )
+
+    level = models.CharField(
+        _("Daraja (Level)"),
+        max_length=30,
+        choices=[
+            ('beginner', 'Beginner (A1–A2)'),
+            ('elementary', 'Elementary (A2–B1)'),
+            ('intermediate', 'Intermediate (B1–B2)'),
+            ('upper_intermediate', 'Upper-Intermediate (B2–C1)'),
+            ('advanced', 'Advanced (C1–C2)'),
+        ],
+        default='intermediate',
+        help_text="Maqola qaysi darajadagi o'quvchilar uchun mo'ljallangan"
+    )
+
+    featured_image = models.ImageField(
+        _("Rasm (muqova)"),
+        upload_to="articles/featured/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="Maqola uchun asosiy rasm (ixtiyoriy, lekin tavsiya etiladi)"
+    )
+
+    created_at = models.DateTimeField(_("Yaratilgan"), auto_now_add=True)
+    updated_at = models.DateTimeField(_("O'zgartirilgan"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Smart Article")
+        verbose_name_plural = _("Smart Articles")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["level", ]),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while SmartArticle.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+
+        super().save(*args, **kwargs)
+
+    @property
+    def word_count(self):
+        return len(self.content.split()) if self.content else 0
+
+
+class ListeningMaterial(models.Model):
+    name = models.CharField(
+        _("Nomi"),
+        max_length=200,
+        validators=[MinLengthValidator(5)],
+        help_text="Masalan: IELTS Listening Practice Test 2025 | Section 1-4"
+    )
+
+    slug = models.SlugField(
+        max_length=250,
+        unique=True,
+        blank=True,
+        help_text="URL uchun avtomatik generatsiya qilinadi"
+    )
+
+    youtube_url = models.URLField(
+        _("YouTube URL"),
+        validators=[URLValidator()],
+        help_text="To'liq YouTube video havolasi[](https://www.youtube.com/watch?v=...)"
+    )
+
+    category = models.CharField(
+        _("Kategoriya"),
+        max_length=100,
+        choices=[
+            ('section_1', 'Section 1 – Everyday Social Conversations'),
+            ('section_2', 'Section 2 – Monologues (speeches, guides)'),
+            ('section_3', 'Section 3 – Academic Discussions'),
+            ('section_4', 'Section 4 – Lectures / Academic Monologues'),
+            ('full_test', 'Full Listening Practice Test'),
+            ('question_type', 'Specific Question Type Practice (Matching, MCQ, etc.)'),
+            ('topic_based', 'Topic-based (Travel, Education, Environment, Work)'),
+            ('tips_tricks', 'Tips & Strategies for IELTS Listening'),
+            ('real_test_simulation', 'Real IELTS Test Simulation'),
+        ],
+        default='full_test',
+        help_text="Material qaysi turdagi mashq ekanligini belgilaydi"
+    )
+
+    description = models.TextField(
+        _("Qisqacha tavsif"),
+        blank=True,
+        max_length=500,
+        help_text="Videoda nimalar borligi haqida qisqa ma'lumot (ixtiyoriy)"
+    )
+
+    difficulty = models.CharField(
+        _("Qiyinlik darajasi"),
+        max_length=20,
+        choices=[
+            ('beginner', 'Beginner / Band 4-5.5'),
+            ('intermediate', 'Intermediate / Band 6-7'),
+            ('advanced', 'Advanced / Band 7.5+'),
+        ],
+        default='intermediate',
+        blank=True,
+    )
+
+    duration_minutes = models.PositiveSmallIntegerField(
+        _("Taxminiy davomiylik (daqiqa)"),
+        blank=True,
+        null=True,
+        help_text="Videoning taxminiy uzunligi (qo'lda yoki avto hisoblash mumkin)"
+    )
+
+    is_active = models.BooleanField(
+        _("Faolmi"),
+        default=True,
+        help_text="Faqat faol materiallar talabalar uchun ko'rinadi"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Listening Material (YouTube)")
+        verbose_name_plural = _("Listening Materiallari (YouTube)")
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["category", "difficulty", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.get_category_display()})"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            while ListeningMaterial.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+
+        super().save(*args, **kwargs)
+
+    @property
+    def youtube_id(self):
+        """YouTube video ID sini qaytaradi (embed uchun foydali)"""
+        if self.youtube_url:
+            # Oddiy holatda ?v= dan keyingi qism
+            if 'v=' in self.youtube_url:
+                return self.youtube_url.split('v=')[1].split('&')[0]
+            # qisqa url holati youtu.be/...
+            elif 'youtu.be/' in self.youtube_url:
+                return self.youtube_url.split('youtu.be/')[1].split('?')[0]
+        return None
+
+
+class Topic(models.Model):
+    name = models.CharField(_("Mavzu nomi"), max_length=150, unique=True)
+
+    class Meta:
+        verbose_name = _("Mavzu")
+        verbose_name_plural = _("Mavzular")
+
+    def __str__(self):
+        return self.name
+
+
+class VocabularyWord(models.Model):
+    word = models.CharField(
+        _("So'z"),
+        max_length=150,
+        validators=[MinLengthValidator(2)]
+    )
+    definition = models.TextField(
+        _("Ta'rif / Definition"),
+        validators=[MinLengthValidator(10)]
+    )
+    cefr_level = models.CharField(
+        _("CEFR darajasi"),
+        max_length=5,
+        choices=[
+            ('A1', 'A1 – Beginner'),
+            ('A2', 'A2 – Elementary'),
+            ('B1', 'B1 – Intermediate'),
+            ('B2', 'B2 – Upper-Intermediate'),
+            ('C1', 'C1 – Advanced'),
+            ('C2', 'C2 – Proficiency'),
+        ],
+        default='B1'
+    )
+    example_sentences = models.TextField(
+        _("Misol jumlalar"),
+        blank=True,
+        help_text="Har bir jumla yangi qatordan yoziladi"
+    )
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="vocabulary_words", blank=True, null=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_vocabulary_words",
+    )
+    is_public = models.BooleanField(default=False)
+    imported_from = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="imports"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Vocabulary Word")
+        verbose_name_plural = _("Vocabulary Words")
+        ordering = ["word"]
+        indexes = [
+            models.Index(fields=["word"]),
+            models.Index(fields=["cefr_level"]),
+        ]
+
+    def __str__(self):
+        return f"{self.word} ({self.cefr_level})"
+
+    def get_example_sentences_list(self):
+        if self.example_sentences:
+            return [s.strip() for s in self.example_sentences.splitlines() if s.strip()]
+        return []
+
+    def save(self, *args, **kwargs):
+        # Role asosida is_public belgilash
+        if self.created_by:
+            if hasattr(self.created_by, "role") and self.created_by.role == "admin":
+                self.is_public = True
+            else:
+                self.is_public = False
+        super().save(*args, **kwargs)

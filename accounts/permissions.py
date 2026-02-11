@@ -69,25 +69,6 @@ class IsOwnerOrAdmin(permissions.BasePermission):
             return False
 
 
-class IsVipOrAdmin(permissions.BasePermission):
-    """
-    VIP yoki admin role ga ega foydalanuvchilarga ruxsat berish
-    """
-
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-
-        # Admin har doim ruxsatga ega
-        if request.user.is_admin_role():
-            return True
-
-        # VIP foydalanuvchilar ruxsatga ega
-        if hasattr(request.user, 'profile') and request.user.profile.is_vip_active():
-            return True
-
-        return False
-
 
 class JWTAuthenticationWithRole(JWTAuthentication):
     """
@@ -103,8 +84,6 @@ class JWTAuthenticationWithRole(JWTAuthentication):
             try:
                 user = User.objects.get(id=user_id)
                 validated_token['role'] = user.role
-                validated_token['is_vip'] = user.profile.is_vip_active() if hasattr(user, 'profile') else False
-                validated_token['coins'] = user.profile.coins if hasattr(user, 'profile') else 0
             except User.DoesNotExist:
                 pass
 
@@ -126,19 +105,4 @@ def check_user_permission(user, required_role=None):
     return True
 
 
-def check_vip_access(user):
-    """
-    VIP ruxsatini tekshirish
-    """
-    if not user or not user.is_authenticated:
-        return False
 
-    # Adminlar har doim VIP ga kirishi mumkin
-    if user.is_admin_role():
-        return True
-
-    # VIP foydalanuvchilar
-    if hasattr(user, 'profile') and user.profile.is_vip_active():
-        return True
-
-    return False
