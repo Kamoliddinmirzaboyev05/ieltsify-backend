@@ -147,12 +147,17 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class GoogleAuthSerializer(serializers.Serializer):
-    id_token = serializers.CharField(required=True)
+    """Clean Google OAuth serializer"""
+    id_token = serializers.CharField(
+        required=True,
+        write_only=True,
+        help_text="Google ID token from frontend"
+    )
 
     def validate_id_token(self, value):
-        # Google token validation logic
-        # Bu yerda Google API orqali tokenni tekshirish kerak
-        # Hozircha placeholder
+        """Validate id_token format"""
+        if not value or len(value) < 100:
+            raise serializers.ValidationError("Invalid token format")
         return value
 
 

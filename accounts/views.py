@@ -21,7 +21,8 @@ from .serializers import (
 
 )
 
-from .services import UserService, EmailService, GoogleAuthService
+from .google_oauth import GoogleOAuth2Service
+from .services import UserService, EmailService
 
 User = get_user_model()
 
@@ -414,62 +415,139 @@ class ChangePasswordView(APIView):
 
 
 class GoogleAuthView(APIView):
-    """Google autentifikatsiyasi"""
+    """
+    Production-ready Google OAuth2 Login API
+    
+    Handles Google OAuth2 authentication with:
+    - Secure token verification
+    - User creation/login
+    - JWT token generation
+    - Proper error handling
+    """
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(
-
-        operation_description="Google orqali autentifikatsiya",
-
+        operation_description="Google OAuth2 Login - Verify ID token and return JWT tokens",
         request_body=GoogleAuthSerializer,
-
-        responses={200: UserProfileSerializer}
-
+        responses={
+            200: openapi.Response(
+                description="Authentication successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'tokens': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'access': openapi.Schema(type=openapi.TYPE_STRING),
+                                'refresh': openapi.Schema(type=openapi.TYPE_STRING),
+                                'user': openapi.Schema(type=openapi.TYPE_OBJECT)
+                            }
+                        ),
+                        'user_created': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="Invalid token or request",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'error': openapi.Schema(type=openapi.TYPE_STRING),
+                        'message': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            ),
+            500: openapi.Response(
+                description="Server error",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'error': openapi.Schema(type=openapi.TYPE_STRING),
+                        'message': openapi.Schema(type=openapi.TYPE_STRING)
+                    }
+                )
+            )
+        }
     )
+    
     def post(self, request):
-        serializer = GoogleAuthSerializer(data=request.data)
+        """
+        Handle Google OAuth2 authentication
         
-        if serializer.is_valid():
-            try:
-                id_token = serializer.validated_data['id_token']
-                
-                # Google orqali autentifikatsiya
-                auth_result = GoogleAuthService.authenticate_google_user(id_token)
-                
-                message = 'Google orqali muvaffaqiyatli ro\'yxatdan o\'tdingiz' if auth_result['created'] else 'Google orqali muvaffaqiyatli tizimga kirdingiz'
-                
-                response_data = {
-                    'message': message,
-                    'user': auth_result['tokens']['user'],
-                    'tokens': auth_result['tokens'],
-                    'email_verified': auth_result['email_verified'],
-                    'created': auth_result['created']
-                }
-                
-                # Agar foydalanuvchi yangi bo'lsa, xush kelibsiz email yuborish
-                if auth_result['created']:
-                    EmailService.send_welcome_email(auth_result['user'])
-                
-                return Response(response_data, status=status.HTTP_200_OK)
-                
-            except ValueError as e:
+        Expected payload:
+        {
+            "id_token": "google_id_token_from_frontend"
+        }
+        
+        Returns:
+        {
+            "success": true,
+            "message": "Login successful",
+            "tokens": {
+                "access": "jwt_access_token",
+                "refresh": "jwt_refresh_token",
+                "user": {...}
+            },
+            "user_created": false
+        }
+        """
+        try:
+            # Step 1: Validate request data
+            serializer = GoogleAuthSerializer(data=request.data)
+            if not serializer.is_valid():
                 return Response({
-                    'error': 'Google autentifikatsiyasi xatolik',
-                    'detail': str(e)
+                    'success': False,
+                    'error': 'validation_error',
+                    'message': 'Invalid request data',
+                    'details': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Step 2: Authenticate with Google
+            id_token = serializer.validated_data['id_token']
+            auth_result = GoogleOAuth2Service.authenticate_google_user(id_token)
+            
+            # Step 3: Handle authentication result
+            if not auth_result['success']:
+                error_status = status.HTTP_400_BAD_REQUEST
+                if auth_result.get('error') == 'invalid_token':
+                    error_status = status.HTTP_401_UNAUTHORIZED
                 
-            except Exception as e:
-                logger.error(f"Google authentication error: {str(e)}")
                 return Response({
-                    'error': 'Google autentifikatsiyasi xatolik',
-                    'detail': 'Tizimda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.'
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        else:
+                    'success': False,
+                    'error': auth_result.get('error', 'authentication_failed'),
+                    'message': auth_result.get('message', 'Authentication failed')
+                }, status=error_status)
+            
+            # Step 4: Success response
+            response_data = {
+                'success': True,
+                'message': auth_result['message'],
+                'tokens': auth_result['tokens'],
+                'user_created': auth_result['user_created']
+            }
+            
+            # Step 5: Send welcome email for new users
+            if auth_result['user_created']:
+                try:
+                    EmailService.send_welcome_email(
+                        User.objects.get(email=auth_result['tokens']['user']['email'])
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to send welcome email: {str(e)}")
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Google OAuth unexpected error: {str(e)}")
             return Response({
-                'error': 'Google autentifikatsiyasi xatolik',
-                'detail': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'success': False,
+                'error': 'server_error',
+                'message': 'An unexpected error occurred. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class PasswordResetView(APIView):
