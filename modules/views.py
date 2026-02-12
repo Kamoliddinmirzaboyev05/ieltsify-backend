@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from .models import ListeningTest, ReadingPassage, WritingTask, VocabularyWord, SmartArticle, ListeningMaterial
 from .serializers import (
     ListeningTestDetailSerializer, ListeningTestCreateUpdateSerializer,
@@ -16,6 +17,7 @@ from .serializers import (
     ListeningMaterialCreateUpdateSerializer, ListeningMaterialDetailSerializer,
     VocabularyWordCreateUpdateSerializer, VocabularyWordDetailSerializer
                            )
+
 
 class ListeningTestListCreateAPIView(generics.ListCreateAPIView):
     queryset = ListeningTest.objects.all().order_by('-created_at')
@@ -236,16 +238,19 @@ class VocabularyWordRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyA
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def import_vocab_word(request, pk):
-    try:
-        original = VocabularyWord.objects.get(pk=pk, is_public=True)
-    except VocabularyWord.DoesNotExist:
-        return Response({"detail": "Word not found"}, status=status.HTTP_404_NOT_FOUND)
+    # Asl so'zni topish
+    original = get_object_or_404(VocabularyWord, pk=pk, is_public=True)
 
     user = request.user
+
+    # Allaqachon import qilinganligini tekshirish
     if VocabularyWord.objects.filter(imported_from=original, created_by=user).exists():
         return Response({"detail": "Already imported"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Is_public statusini hisoblash
     is_public = True if getattr(user, "role", "") == "admin" else False
 
+    # Yangi so'zni yaratish
     new_word = VocabularyWord.objects.create(
         word=original.word,
         definition=original.definition,
@@ -257,4 +262,7 @@ def import_vocab_word(request, pk):
         is_public=is_public,
     )
 
-    return Response({"detail": "Imported successfully", "id": new_word.id}, status=status.HTTP_201_CREATED)
+    return Response(
+        {"detail": "Imported successfully", "id": new_word.id},
+        status=status.HTTP_201_CREATED
+    )

@@ -1,9 +1,11 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from rest_framework_simplejwt.views import token_refresh
+from rest_framework_simplejwt.views import TokenRefreshView
 from accounts.views import CustomTokenObtainPairView
 
 schema_view = get_schema_view(
@@ -24,12 +26,10 @@ urlpatterns = [
     path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('api/redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
     path('accounts/', include('accounts.urls')),
-    # path('attempts/', include('attempts.urls')),
     path('', include('modules.urls')),
-    # path('subscriptions/', include('subscriptions.urls')),
+    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]
 
-urlpatterns += [
-    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', token_refresh, name='token_refresh'),
-]
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
