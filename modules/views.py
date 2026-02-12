@@ -27,7 +27,7 @@ class ListeningTestListCreateAPIView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -44,7 +44,7 @@ class ListeningTestRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAP
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -63,7 +63,7 @@ class ReadingPassageListCreateAPIView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -79,7 +79,7 @@ class ReadingPassageRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyA
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -98,7 +98,7 @@ class WritingTaskListCreateAPIView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -114,7 +114,7 @@ class WritingTaskRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIV
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -133,7 +133,7 @@ class SmartArticleListCreateAPIView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -149,7 +149,7 @@ class SmartArticleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -168,7 +168,7 @@ class ListeningMaterialListCreateAPIView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -184,7 +184,7 @@ class ListeningMaterialRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestr
 
     def get_permissions(self):
         if self.request.method == 'GET':
-            return [IsRegularUser(), IsAdminUser()]
+            return [(IsRegularUser | IsAdminUser)()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
