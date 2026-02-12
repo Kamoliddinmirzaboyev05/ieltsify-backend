@@ -1,10 +1,11 @@
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from rest_framework.generics import RetrieveUpdateAPIView
-
 from django.contrib.auth import get_user_model
+import logging
+
+logger = logging.getLogger(__name__)
 
 from drf_yasg.utils import swagger_auto_schema
 
@@ -197,44 +198,43 @@ class UserRegistrationView(APIView):
     def post(self, request):
 
         serializer = UserRegistrationSerializer(data=request.data)
-
+        
         if serializer.is_valid():
-
             try:
-
-                user = UserService.create_user_with_profile(serializer.validated_data)
-
+                user = UserService.create_user_with_profile(
+                    username=serializer.validated_data['username'],
+                    email=serializer.validated_data['email'],
+                    password=serializer.validated_data['password'],
+                    first_name=serializer.validated_data['first_name'],
+                    last_name=serializer.validated_data['last_name']
+                )
+                
                 # Xush kelibsiz email yuborish
-
-                # EmailService.send_welcome_email(user)
-                #
-                # EmailService.send_verification_email(user)
-
+                EmailService.send_welcome_email(user)
+                
+                # Email tasdiqlash xati yuborish
+                EmailService.send_verification_email(user)
+                
                 # Tokenlar generatsiya qilish
-
                 tokens = UserService.generate_jwt_tokens(user)
-
+                
                 return Response({
-
                     'message': 'Foydalanuvchi muvaffaqiyatli ro\'yxatdan o\'tdi',
-
                     'tokens': tokens
-
                 }, status=status.HTTP_201_CREATED)
-
-
-
+            
             except Exception as e:
-
+                logger.error(f"Registration error: {str(e)}")
                 return Response({
-
                     'error': 'Ro\'yxatdan o\'tishda xatolik',
-
                     'detail': str(e)
-
                 }, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        else:
+            return Response({
+                'error': 'Ro\'yxatdan o\'tishda xatolik',
+                'detail': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserProfileView(RetrieveUpdateAPIView):
@@ -427,59 +427,49 @@ class GoogleAuthView(APIView):
 
     )
     def post(self, request):
-
         serializer = GoogleAuthSerializer(data=request.data)
-
+        
         if serializer.is_valid():
-
-            id_token = serializer.validated_data['id_token']
-
-            # Google tokenini tekshirish
-
-            user_info = GoogleAuthService.verify_google_token(id_token)
-
-            if not user_info:
-                return Response({
-
-                    'error': 'Google tokeni noto\'g\'ri'
-
-                }, status=status.HTTP_400_BAD_REQUEST)
-
             try:
-
-                # Foydalanuvchini yaratish yoki yangilash
-
-                user, created = GoogleAuthService.create_or_update_google_user(user_info)
-
-                # Tokenlar generatsiya qilish
-
-                tokens = UserService.generate_jwt_tokens(user)
-
-                message = 'Google orqali muvaffaqiyatli ro\'yxatdan o\'tdingiz' if created else 'Google orqali muvaffaqiyatli tizimga kirdingiz'
-
-                return Response({
-
+                id_token = serializer.validated_data['id_token']
+                
+                # Google orqali autentifikatsiya
+                auth_result = GoogleAuthService.authenticate_google_user(id_token)
+                
+                message = 'Google orqali muvaffaqiyatli ro\'yxatdan o\'tdingiz' if auth_result['created'] else 'Google orqali muvaffaqiyatli tizimga kirdingiz'
+                
+                response_data = {
                     'message': message,
-
-                    'user': tokens['user'],
-
-                    'tokens': tokens
-
-                }, status=status.HTTP_200_OK)
-
-
-
-            except Exception as e:
-
+                    'user': auth_result['tokens']['user'],
+                    'tokens': auth_result['tokens'],
+                    'email_verified': auth_result['email_verified'],
+                    'created': auth_result['created']
+                }
+                
+                # Agar foydalanuvchi yangi bo'lsa, xush kelibsiz email yuborish
+                if auth_result['created']:
+                    EmailService.send_welcome_email(auth_result['user'])
+                
+                return Response(response_data, status=status.HTTP_200_OK)
+                
+            except ValueError as e:
                 return Response({
-
-                    'error': 'Google autentifikatsiyasida xatolik',
-
+                    'error': 'Google autentifikatsiyasi xatolik',
                     'detail': str(e)
-
                 }, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+            except Exception as e:
+                logger.error(f"Google authentication error: {str(e)}")
+                return Response({
+                    'error': 'Google autentifikatsiyasi xatolik',
+                    'detail': 'Tizimda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.'
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        else:
+            return Response({
+                'error': 'Google autentifikatsiyasi xatolik',
+                'detail': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordResetView(APIView):

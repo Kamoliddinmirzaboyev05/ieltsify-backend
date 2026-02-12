@@ -32,14 +32,15 @@ class UserAdmin(BaseUserAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user_email', 'created_at')
-    list_filter = ('created_at',)
+    list_display = ('user_email', 'email_verified', 'target_band_score', 'created_at', 'updated_at')
+    list_filter = ('email_verified', 'created_at')
     search_fields = ('user__email', 'user__username')
     ordering = ('-created_at',)
     readonly_fields = ('created_at', 'updated_at')
     
     fieldsets = (
-        ('User Information', {'fields': ('user', 'target_band_score', 'target_date', 'listening_score', 'reading_score', 'writing_score', 'speaking_score')}),
+        ('User Information', {'fields': ('user', 'email_verified')}),
+        ('IELTS Scores', {'fields': ('target_band_score', 'target_date', 'listening_score', 'reading_score', 'writing_score', 'speaking_score')}),
         ('Timestamps', {'fields': ('created_at', 'updated_at')}),
     )
     

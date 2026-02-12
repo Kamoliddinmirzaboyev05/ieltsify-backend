@@ -43,13 +43,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         fields = ('username', 'email', 'first_name', 'last_name', 'password')
 
     def validate(self, attrs):
+        errors = {}
+        
         # Email uniqueness check
         if User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError("Bu email allaqachon ro'yxatdan o'tgan")
+            errors['email'] = "Bu email allaqachon ro'yxatdan o'tgan"
         
         # Username uniqueness check
         if User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError("Bu username allaqachon band")
+            errors['username'] = "Bu username allaqachon band"
+        
+        if errors:
+            raise serializers.ValidationError(errors)
         
         return attrs
 
@@ -169,3 +174,4 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['new_password_confirm']:
             raise serializers.ValidationError("Parollar mos emas")
         return attrs
+

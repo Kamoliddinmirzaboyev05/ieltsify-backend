@@ -49,6 +49,11 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"{self.user.email}"
 
+    def has_unlimited_access(self):
+        """Foydalanuvchining cheksiz kirish huquqi borligini tekshirish"""
+        # Hozircha false qaytaramiz, keyinchalik subscription ga bog'lash mumkin
+        return False
+
 
     class Meta:
         ordering = ['-created_at']
