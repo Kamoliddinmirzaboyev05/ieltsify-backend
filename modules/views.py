@@ -93,7 +93,7 @@ class ReadingPassageRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyA
 class WritingTaskListCreateAPIView(generics.ListCreateAPIView):
     queryset = WritingTask.objects.all().order_by('-created_at')
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['difficulty', 'is_active']
+    filterset_fields = ['is_active']  # is_active filter qo'shildi
     search_fields = ['title', 'topic_category', 'task1_question', 'task2_question']
     ordering_fields = ['created_at', 'title']
     parser_classes = [MultiPartParser, FormParser]  # task1_image upload uchun

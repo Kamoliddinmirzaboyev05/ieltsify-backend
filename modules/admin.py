@@ -32,8 +32,8 @@ class ReadingPassageAdmin(admin.ModelAdmin):
 
 @admin.register(WritingTask)
 class WritingTaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'topic_category', 'difficulty', 'is_active', 'created_at', 'updated_at')
-    list_filter = ('difficulty', 'topic_category', 'is_active', 'created_at')
+    list_display = ('title', 'topic_category', 'created_at', 'updated_at')
+    list_filter = ('topic_category', 'is_active', 'created_at')
     search_fields = ('title', 'task1_question', 'task2_question')
     prepopulated_fields = {"slug": ("title",)}
     readonly_fields = ('created_at', 'updated_at')

@@ -8,6 +8,7 @@ from .views import (
     VocabularyWordListCreateAPIView, VocabularyWordRetrieveUpdateDestroyAPIView,
     import_vocab_word
 )
+from .views_dashboard import dashboard_statistics, quick_stats
 
 app_name = 'modules'
 
@@ -25,4 +26,8 @@ urlpatterns = [
     path('vocabulary-words/', VocabularyWordListCreateAPIView.as_view(), name='vocabulary-word-list-create'),
     path('vocabulary-words/<int:id>/', VocabularyWordRetrieveUpdateDestroyAPIView.as_view(), name='vocabulary-word-detail'),
     path('vocabulary/import/<int:pk>/', import_vocab_word, name='import_vocab_word'),
+    
+    # Dashboard endpoints
+    path('dashboard/statistics/', dashboard_statistics, name='dashboard-statistics'),
+    path('dashboard/quick-stats/', quick_stats, name='dashboard-quick-stats'),
 ]

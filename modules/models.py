@@ -193,16 +193,28 @@ class WritingTask(models.Model):
     )
 
     difficulty = models.CharField(
-        _("Taxminiy band darajasi"),
+        _("Qiyinlik darajasi"),
         max_length=20,
         choices=[
-            ('band_5_6', 'Band 5–6'),
-            ('band_6_7', 'Band 6–7'),
-            ('band_7_5_plus', 'Band 7.5+'),
+            ('easy', 'Easy (Band 5-6)'),
+            ('medium', 'Medium (Band 6-7)'),
+            ('hard', 'Hard (Band 7.5-9)'),
         ],
-        default='band_6_7',
-        blank=True,
+        default='medium',
+        help_text="Writing task qiyinlik darajasi"
     )
+
+    # difficulty = models.CharField(
+    #     _("Taxminiy band darajasi"),
+    #     max_length=20,
+    #     choices=[
+    #         ('band_5_6', 'Band 5–6'),
+    #         ('band_6_7', 'Band 6–7'),
+    #         ('band_7_5_plus', 'Band 7.5+'),
+    #     ],
+    #     default='band_6_7',
+    #     blank=True,
+    # )
 
     # Task 1 maydonlari
     task1_question = models.TextField(
@@ -220,16 +232,16 @@ class WritingTask(models.Model):
         help_text="Graph, table, pie chart, bar chart, process diagram yoki map"
     )
 
-    task1_word_count = models.PositiveSmallIntegerField(
-        _("Task 1 minimal so'zlar"),
-        default=150,
-        help_text="Odatda 150+"
-    )
+    # task1_word_count = models.PositiveSmallIntegerField(
+    #     _("Task 1 minimal so'zlar"),
+    #     default=150,
+    #     help_text="Odatda 150+"
+    # )
 
-    task1_time_minutes = models.PositiveSmallIntegerField(
-        _("Task 1 vaqti (daqiqa)"),
-        default=20,
-    )
+    # task1_time_minutes = models.PositiveSmallIntegerField(
+    #     _("Task 1 vaqti (daqiqa)"),
+    #     default=20,
+    # )
 
     # Task 2 maydonlari
     task2_question = models.TextField(
@@ -254,18 +266,24 @@ class WritingTask(models.Model):
         blank=True,
     )
 
-    task2_word_count = models.PositiveSmallIntegerField(
-        _("Task 2 minimal so'zlar"),
-        default=250,
-        help_text="Odatda 250+"
+    # task2_word_count = models.PositiveSmallIntegerField(
+    #     _("Task 2 minimal so'zlar"),
+    #     default=250,
+    #     help_text="Odatda 250+"
+    # )
+    #
+    # task2_time_minutes = models.PositiveSmallIntegerField(
+    #     _("Task 2 vaqti (daqiqa)"),
+    #     default=40,
+    # )
+    #
+
+    is_active = models.BooleanField(
+        _("Faol"),
+        default=True,
+        help_text="Writing task faol yoki faol emasligini belgilaydi"
     )
 
-    task2_time_minutes = models.PositiveSmallIntegerField(
-        _("Task 2 vaqti (daqiqa)"),
-        default=40,
-    )
-
-    is_active = models.BooleanField(_("Faol"), default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

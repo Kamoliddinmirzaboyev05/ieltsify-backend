@@ -133,19 +133,14 @@ class WritingTaskDetailSerializer(serializers.ModelSerializer):
             "title",
             "slug",
             "topic_category",
-            "difficulty",
+            "is_active",
             # Task 1
             "task1_question",
             "task1_image_url",
-            "task1_word_count",
-            "task1_time_minutes",
             # Task 2
             "task2_question",
             "task2_essay_type",
-            "task2_word_count",
-            "task2_time_minutes",
             # Audit
-            "is_active",
             "created_at",
             "updated_at",
         ]
@@ -166,19 +161,13 @@ class WritingTaskCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "title",
             "topic_category",
-            "difficulty",
+            "is_active",
             # Task 1
             "task1_question",
             "task1_image",
-            "task1_word_count",
-            "task1_time_minutes",
             # Task 2
             "task2_question",
             "task2_essay_type",
-            "task2_word_count",
-            "task2_time_minutes",
-            # Audit
-            "is_active",
         ]
 
     def validate_title(self, value):
