@@ -5,7 +5,7 @@ from django.core.validators import URLValidator
 
 class ListeningTestDetailSerializer(serializers.ModelSerializer):
     cover_image_url = serializers.SerializerMethodField()
-    html_file_url = serializers.SerializerMethodField()
+    html_content = serializers.SerializerMethodField()  # yangi
 
     class Meta:
         model = ListeningTest
@@ -14,7 +14,7 @@ class ListeningTestDetailSerializer(serializers.ModelSerializer):
             "title",
             "slug",
             "description",
-            "html_file_url",
+            "html_content",  # oldingi html_file_url o‘rniga
             "cover_image_url",
             "difficulty",
             "is_active",
@@ -29,10 +29,13 @@ class ListeningTestDetailSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.cover_image.url) if request else obj.cover_image.url
         return None
 
-    def get_html_file_url(self, obj):
+    def get_html_content(self, obj):
         if obj.html_file:
-            request = self.context.get('request')
-            return request.build_absolute_uri(obj.html_file.url) if request else obj.html_file.url
+            try:
+                with open(obj.html_file.path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                return f"Error reading file: {str(e)}"
         return None
 
 
@@ -66,7 +69,7 @@ class ListeningTestCreateUpdateSerializer(serializers.ModelSerializer):
 
 class ReadingPassageDetailSerializer(serializers.ModelSerializer):
     cover_image_url = serializers.SerializerMethodField()
-    html_content_url = serializers.SerializerMethodField()
+    html_content = serializers.SerializerMethodField()  # URL o‘rniga string
 
     class Meta:
         model = ReadingPassage
@@ -74,7 +77,7 @@ class ReadingPassageDetailSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "slug",
-            "html_content_url",
+            "html_content",    # endi string
             "cover_image_url",
             "difficulty",
             "word_count",
@@ -90,10 +93,13 @@ class ReadingPassageDetailSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.cover_image.url) if request else obj.cover_image.url
         return None
 
-    def get_html_content_url(self, obj):
+    def get_html_content(self, obj):
         if obj.html_content:
-            request = self.context.get('request')
-            return request.build_absolute_uri(obj.html_content.url) if request else obj.html_content.url
+            try:
+                with open(obj.html_content.path, 'r', encoding='utf-8') as f:
+                    return f.read()
+            except Exception as e:
+                return f"Error reading file: {str(e)}"
         return None
 
 
