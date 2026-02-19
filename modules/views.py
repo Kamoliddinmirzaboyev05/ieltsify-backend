@@ -42,7 +42,7 @@ class ListeningTestRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAP
     queryset = ListeningTest.objects.all()
     parser_classes = [MultiPartParser, FormParser]
 
-    lookup_field = 'slug'  # URL da slug orqali olish
+    lookup_field = 'id'  # URL da id orqali olish
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -77,7 +77,7 @@ class ReadingPassageListCreateAPIView(generics.ListCreateAPIView):
 class ReadingPassageRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ReadingPassage.objects.all()
     parser_classes = [MultiPartParser, FormParser]
-    lookup_field = 'slug'  # URL da slug orqali olish
+    lookup_field = 'id'  # URL da id orqali olish
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -112,7 +112,7 @@ class WritingTaskListCreateAPIView(generics.ListCreateAPIView):
 class WritingTaskRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = WritingTask.objects.all()
     parser_classes = [MultiPartParser, FormParser]
-    lookup_field = 'slug'  # URL da slug orqali olish
+    lookup_field = 'id'  # URL da id orqali olish
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -147,7 +147,7 @@ class SmartArticleListCreateAPIView(generics.ListCreateAPIView):
 class SmartArticleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = SmartArticle.objects.all()
     parser_classes = [MultiPartParser, FormParser]
-    lookup_field = 'slug'  # URL da slug orqali olish
+    lookup_field = 'id'  # URL da id orqali olish
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -182,7 +182,7 @@ class ListeningMaterialListCreateAPIView(generics.ListCreateAPIView):
 class ListeningMaterialRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ListeningMaterial.objects.all()
     parser_classes = [MultiPartParser, FormParser]
-    lookup_field = 'slug'  # URL da slug orqali olish
+    lookup_field = 'id'  # URL da id orqali olish
 
     def get_permissions(self):
         if self.request.method == 'GET':
