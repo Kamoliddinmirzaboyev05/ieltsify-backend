@@ -48,6 +48,21 @@ INSTALLED_APPS = [
     'subscriptions',
 ]
 
+# Payment Gateway Settings
+CLICK_SERVICE_ID = config('CLICK_SERVICE_ID', default='12345', cast=int)
+CLICK_MERCHANT_ID = config('CLICK_MERCHANT_ID', default='67890', cast=int)
+CLICK_SECRET_KEY = config('CLICK_SECRET_KEY', default='')
+CLICK_CALLBACK_URL = config('CLICK_CALLBACK_URL', default='https://yourdomain.com/api/subscriptions/payments/callback/')
+
+PAYME_SERVICE_ID = config('PAYME_SERVICE_ID', default='54321', cast=int)
+PAYME_MERCHANT_ID = config('PAYME_MERCHANT_ID', default='98765', cast=int)
+PAYME_SECRET_KEY = config('PAYME_SECRET_KEY', default='')
+PAYME_CALLBACK_URL = config('PAYME_CALLBACK_URL', default='https://yourdomain.com/api/subscriptions/payments/callback/')
+
+# Payment Gateway URLs
+CLICK_PAYMENT_URL = "https://click.uz/pay"
+PAYME_PAYMENT_URL = "https://checkout.payme.uz"
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',

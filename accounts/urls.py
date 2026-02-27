@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
-    CustomTokenObtainPairView, UserRegistrationView,
-    GoogleAuthView, PasswordResetView, PasswordResetConfirmView,
+    UserRegistrationView, GoogleAuthView,
+    PasswordResetView, PasswordResetConfirmView,
     EmailVerificationView, ResendVerificationEmailView,
     UserProfileView, ChangePasswordView
 )

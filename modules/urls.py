@@ -9,6 +9,8 @@ from .views import (
     import_vocab_word
 )
 from .views_dashboard import dashboard_statistics, quick_stats
+from .views_myreport import my_report_data
+from .views_admin_dashboard import admin_dashboard_statistics
 
 app_name = 'modules'
 
@@ -30,4 +32,10 @@ urlpatterns = [
     # Dashboard endpoints
     path('dashboard/statistics/', dashboard_statistics, name='dashboard-statistics'),
     path('dashboard/quick-stats/', quick_stats, name='dashboard-quick-stats'),
+    
+    # MyReport endpoint
+    path('my-report/', my_report_data, name='my-report'),
+    
+    # Admin Dashboard endpoint
+    path('admin-dashboard/', admin_dashboard_statistics, name='admin-dashboard-statistics'),
 ]
