@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     'modules',
     'attempts',
     'subscriptions',
+    'mockexams',
+    'ai_services',
 ]
 
 # Payment Gateway Settings

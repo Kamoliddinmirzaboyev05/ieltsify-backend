@@ -91,41 +91,63 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'date_joined': obj.user.date_joined,
             'last_login': obj.user.last_login,
             'target_band_score': obj.target_band_score,
-            'target_date': obj.target_date,
+            'target_date': str(obj.target_date) if obj.target_date else None,
+            'current_band_score': obj.current_band_score,
+            'daily_study_hours': obj.daily_study_hours,
+            'exam_type': obj.exam_type,
             'listening_score': obj.listening_score,
             'reading_score': obj.reading_score,
             'writing_score': obj.writing_score,
-            'speaking_score': obj.speaking_score
+            'speaking_score': obj.speaking_score,
+            'weak_skills': obj.weak_skills,
+            'strong_skills': obj.strong_skills,
+            'onboarding_completed': obj.onboarding_completed,
         }
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     target_band_score = serializers.FloatField(required=False, allow_null=True)
     target_date = serializers.DateField(required=False, allow_null=True)
+    current_band_score = serializers.FloatField(required=False, allow_null=True)
+    daily_study_hours = serializers.FloatField(required=False, allow_null=True)
+    exam_type = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    weak_skills = serializers.ListField(child=serializers.CharField(), required=False, allow_null=True)
+    strong_skills = serializers.ListField(child=serializers.CharField(), required=False, allow_null=True)
+    onboarding_completed = serializers.BooleanField(required=False)
 
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'target_band_score', 'target_date')
+        fields = ('first_name', 'last_name', 'target_band_score', 'target_date',
+                  'current_band_score', 'daily_study_hours', 'exam_type',
+                  'weak_skills', 'strong_skills', 'onboarding_completed')
 
     def validate(self, attrs):
         return attrs
 
     def update(self, instance, validated_data):
-        target_band_score = validated_data.pop('target_band_score', None)
-        target_date = validated_data.pop('target_date', None)
+        # Profile fields
+        profile_fields = [
+            'target_band_score', 'target_date', 'current_band_score',
+            'daily_study_hours', 'exam_type', 'weak_skills', 'strong_skills',
+            'onboarding_completed'
+        ]
+
+        profile_data = {}
+        for field in profile_fields:
+            if field in validated_data:
+                profile_data[field] = validated_data.pop(field)
 
         # Update user fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
         # Update profile fields
-        if target_band_score is not None:
-            instance.userprofile.target_band_score = target_band_score
-        if target_date is not None:
-            instance.userprofile.target_date = target_date
+        profile = instance.userprofile
+        for attr, value in profile_data.items():
+            setattr(profile, attr, value)
 
         instance.save()
-        instance.userprofile.save()
+        profile.save()
         return instance
 
 

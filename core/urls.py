@@ -28,6 +28,8 @@ urlpatterns = [
     path('accounts/', include('accounts.urls')),
     path('', include('modules.urls')),
     path('', include('subscriptions.urls')),
+    path('', include('mockexams.urls')),
+    path('', include('ai_services.urls')),
     path('attempts/', include('attempts.urls')),
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

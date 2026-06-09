@@ -7,18 +7,18 @@ class SubscriptionPlan(models.Model):
     """
     Tarif rejalari:
     - Free
-    - Basic Weekly
-    - Basic Monthly
+    - IELTSify Weekly
+    - IELTSify Monthly
     """
 
     code = models.CharField(
         max_length=50,
         unique=True,
-        help_text="Ichki kod (masalan: free, basic_weekly, basic_monthly)",
+        help_text="Ichki kod (masalan: free, weekly, monthly)",
     )
     name = models.CharField(
         max_length=150,
-        help_text="Frontend uchun chiroyli nom (masalan: Free, Basic Weekly)",
+        help_text="Frontend uchun chiroyli nom",
     )
     description = models.TextField(
         blank=True,
@@ -29,27 +29,68 @@ class SubscriptionPlan(models.Model):
     price_uzs = models.PositiveIntegerField(
         help_text="Narx (so'mda)",
     )
+    launch_price_uzs = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        help_text="Launch maxsus narx (bo'lmasa oddiy narx ishlatiladi)",
+    )
     duration_days = models.PositiveIntegerField(
-        help_text="Obuna davomiyligi (kunlarda, masalan 7 yoki 30)",
+        help_text="Obuna davomiyligi (kunlarda)",
     )
 
     included_coins = models.PositiveIntegerField(
         default=0,
-        help_text="Obuna olganda beriladigan tanga miqdori",
+        help_text="Obuna olganda beriladigan bonus coin",
     )
 
-    # Limitlar / cheksizlik flaglari
-    is_unlimited_reading = models.BooleanField(default=True)
-    is_unlimited_listening = models.BooleanField(default=True)
+    # AI limitlari (tarif ichida bepul)
+    writing_ai_limit = models.PositiveIntegerField(
+        default=0,
+        help_text="Tarif ichidagi Writing AI tahlil limiti (0 = yo'q)",
+    )
+    speaking_ai_limit = models.PositiveIntegerField(
+        default=0,
+        help_text="Tarif ichidagi Speaking AI tahlil limiti (0 = yo'q)",
+    )
+
+    # Kunlik limitlar (fair-use)
+    daily_reading_limit = models.PositiveIntegerField(
+        default=1,
+        help_text="Kunlik Reading passage limiti",
+    )
+    daily_listening_limit = models.PositiveIntegerField(
+        default=1,
+        help_text="Kunlik Listening section limiti",
+    )
+    daily_writing_ai_limit = models.PositiveIntegerField(
+        default=5,
+        help_text="Kunlik Writing AI limiti (fair-use)",
+    )
+    daily_speaking_ai_limit = models.PositiveIntegerField(
+        default=5,
+        help_text="Kunlik Speaking AI limiti (fair-use)",
+    )
+
+    # Cheksizlik flaglari
+    is_unlimited_reading = models.BooleanField(default=False)
+    is_unlimited_listening = models.BooleanField(default=False)
     is_unlimited_vocab = models.BooleanField(default=True)
+    has_weekly_plan = models.BooleanField(default=False)
+    has_advanced_analytics = models.BooleanField(default=False)
+    has_smart_article = models.BooleanField(default=False)
 
     daily_vocab_limit = models.PositiveIntegerField(
         blank=True,
         null=True,
-        help_text="Kunlik vocab limiti (Free uchun 10, boshqalar uchun None = cheksiz)",
+        help_text="Kunlik vocab limiti (None = cheksiz)",
     )
 
+    # Launch narx faol yoki yo'q
+    is_launch_price_active = models.BooleanField(default=False)
+
     is_active = models.BooleanField(default=True)
+    badge = models.CharField(max_length=50, blank=True, null=True, help_text="Masalan: Tavsiya etiladi")
+    sort_order = models.PositiveIntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -57,10 +98,17 @@ class SubscriptionPlan(models.Model):
     class Meta:
         verbose_name = "Subscription Plan"
         verbose_name_plural = "Subscription Planlar"
-        ordering = ["price_uzs"]
+        ordering = ["sort_order", "price_uzs"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.code})"
+
+    @property
+    def effective_price(self):
+        """Hozirgi amal qilayotgan narx"""
+        if self.is_launch_price_active and self.launch_price_uzs:
+            return self.launch_price_uzs
+        return self.price_uzs
 
 
 class UserSubscription(models.Model):
@@ -222,9 +270,9 @@ class CoinTransaction(models.Model):
 class CoinPack(models.Model):
     """
     Coin Shop uchun paketlar:
-    - 50 Coin = 9,900 UZS
-    - 150 Coin = 19,900 UZS
-    va hokazo.
+    - 50 Coin = 7,900 UZS
+    - 150 Coin = 17,900 UZS
+    - 500 Coin = 44,900 UZS
     """
 
     name = models.CharField(max_length=150)
@@ -242,6 +290,43 @@ class CoinPack(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} - {self.coins} coin"
+
+
+class CoinServiceCost(models.Model):
+    """
+    AI xizmatlarining coin narxlari.
+    Admin paneldan boshqariladi.
+    """
+    SERVICE_CHOICES = (
+        ("writing_task1", "Writing Task 1 AI tahlili"),
+        ("writing_task2", "Writing Task 2 AI tahlili"),
+        ("speaking_part1", "Speaking Part 1 AI tahlili"),
+        ("speaking_part2", "Speaking Part 2 AI tahlili"),
+        ("speaking_part3", "Speaking Part 3 AI tahlili"),
+        ("speaking_full_mock", "Full Speaking Mock tahlili"),
+        ("full_mock_report", "Full IELTS Mock Report"),
+        ("ai_tutor", "Kengaytirilgan AI Tutor javobi"),
+        ("core_mock_exam", "Core Mock Exam"),
+        ("complete_mock_exam", "Complete Mock Exam"),
+    )
+
+    service_code = models.CharField(
+        max_length=50,
+        unique=True,
+        choices=SERVICE_CHOICES,
+    )
+    name = models.CharField(max_length=150)
+    cost_coins = models.PositiveIntegerField(help_text="Xizmat narxi (coin)")
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "Coin Service Cost"
+        verbose_name_plural = "Coin Service Costs"
+        ordering = ["service_code"]
+
+    def __str__(self):
+        return f"{self.name} → {self.cost_coins} coin"
 
 
 class Payment(models.Model):
@@ -324,6 +409,13 @@ class Payment(models.Model):
         blank=True,
         null=True,
         help_text="Provayderdan kelgan qo'shimcha ma'lumotlar (request/response)",
+    )
+
+    receipt_image = models.ImageField(
+        upload_to="payments/receipts/%Y/%m/",
+        blank=True,
+        null=True,
+        help_text="To'lov cheki (screenshot yoki PDF)",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

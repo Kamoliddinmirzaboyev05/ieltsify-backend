@@ -481,16 +481,20 @@ def get_recent_activities():
 
 def get_top_performers():
     """Eng yaxshi natijalari"""
+    from accounts.models import UserProfile as UserProfileModel
     # Highest band scores
     top_scores = []
-    profiles = UserProfile.objects.select_related('user').order_by('-listening_score')[:5]
-    for profile in profiles:
-        overall_band = (profile.listening_score + profile.reading_score + 
-                        profile.writing_score + profile.speaking_score) / 4
-        top_scores.append({
-            'email': profile.user.email,
-            'overall_band': round(overall_band, 1)
-        })
+    try:
+        profiles = UserProfileModel.objects.select_related('user').order_by('-listening_score')[:5]
+        for profile in profiles:
+            overall_band = (profile.listening_score + profile.reading_score + 
+                            profile.writing_score + profile.speaking_score) / 4
+            top_scores.append({
+                'email': profile.user.email,
+                'overall_band': round(overall_band, 1)
+            })
+    except Exception:
+        pass
     
     # Most consistent users (based on daily usage streak)
     most_consistent = []

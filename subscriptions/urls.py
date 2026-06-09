@@ -11,6 +11,10 @@ from .views import (
     CreateSubscriptionPaymentView,
     CreateCoinPackPaymentView,
     PaymentCallbackView,
+    SubmitPaymentWithReceiptView,
+    MyPaymentsView,
+    UsageLimitsView,
+    CoinServiceCostsView,
 )
 
 app_name = "subscriptions"
@@ -49,6 +53,26 @@ urlpatterns = [
         "subs/payments/callback/",
         PaymentCallbackView.as_view(),
         name="payment-callback",
+    ),
+    path(
+        "subs/submit-payment/",
+        SubmitPaymentWithReceiptView.as_view(),
+        name="submit-payment-receipt",
+    ),
+    path(
+        "subs/my-payments/",
+        MyPaymentsView.as_view(),
+        name="my-payments",
+    ),
+    path(
+        "subs/usage-limits/",
+        UsageLimitsView.as_view(),
+        name="usage-limits",
+    ),
+    path(
+        "subs/coin-service-costs/",
+        CoinServiceCostsView.as_view(),
+        name="coin-service-costs",
     ),
 ]
 

@@ -11,6 +11,11 @@ from .views import (
 from .views_dashboard import dashboard_statistics, quick_stats
 from .views_myreport import my_report_data
 from .views_admin_dashboard import admin_dashboard_statistics
+from .views_admin_panel import (
+    admin_users_list, admin_user_detail, admin_adjust_coins, admin_toggle_subscription,
+    admin_payments_list, admin_approve_payment, admin_reject_payment,
+    admin_logs, admin_coin_transactions,
+)
 
 app_name = 'modules'
 
@@ -38,4 +43,15 @@ urlpatterns = [
     
     # Admin Dashboard endpoint
     path('admin-dashboard/', admin_dashboard_statistics, name='admin-dashboard-statistics'),
+    
+    # Admin Panel endpoints (users, payments, logs)
+    path('admin-dashboard/users/', admin_users_list, name='admin-users-list'),
+    path('admin-dashboard/users/<int:user_id>/', admin_user_detail, name='admin-user-detail'),
+    path('admin-dashboard/users/coins/', admin_adjust_coins, name='admin-adjust-coins'),
+    path('admin-dashboard/users/subscription/', admin_toggle_subscription, name='admin-toggle-subscription'),
+    path('admin-dashboard/payments/', admin_payments_list, name='admin-payments-list'),
+    path('admin-dashboard/payments/approve/', admin_approve_payment, name='admin-approve-payment'),
+    path('admin-dashboard/payments/reject/', admin_reject_payment, name='admin-reject-payment'),
+    path('admin-dashboard/logs/', admin_logs, name='admin-logs'),
+    path('admin-dashboard/coin-transactions/', admin_coin_transactions, name='admin-coin-transactions'),
 ]

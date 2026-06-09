@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.parsers import MultiPartParser, FormParser
 from accounts.permissions import IsRegularUser, IsAdminUser
 from drf_yasg.utils import swagger_auto_schema
 from .models import SubscriptionPlan, CoinPack, Payment
@@ -32,7 +33,7 @@ class SubscriptionPlanListCreateView(generics.ListCreateAPIView):
 
     def get_permissions(self):
         if self.request.method == "GET":
-            return [IsRegularUser() | IsAdminUser()]
+            return [permissions.IsAuthenticated()]
         return [IsAdminUser()]
 
     def get_queryset(self):
@@ -294,3 +295,125 @@ class PaymentCallbackView(generics.CreateAPIView):
         )
 
         return Response(PaymentSerializer(payment).data)
+
+
+class SubmitPaymentWithReceiptView(generics.CreateAPIView):
+    """
+    Foydalanuvchi to'lov cheki bilan to'lov so'rovi yuboradi.
+    Receipt image + plan_id yoki coin_pack_id yuboriladi.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        plan_id = request.data.get('plan_id')
+        coin_pack_id = request.data.get('coin_pack_id')
+        receipt_image = request.FILES.get('receipt_image')
+
+        if not receipt_image:
+            return Response(
+                {'error': 'To\'lov cheki (receipt_image) yuklash majburiy'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not plan_id and not coin_pack_id:
+            return Response(
+                {'error': 'plan_id yoki coin_pack_id yuborish kerak'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            payment_data = {
+                'user': request.user,
+                'provider': 'click',
+                'status': Payment.STATUS_PENDING,
+                'receipt_image': receipt_image,
+            }
+
+            if plan_id:
+                plan = SubscriptionPlan.objects.get(id=plan_id, is_active=True)
+                payment_data['plan'] = plan
+                payment_data['amount_uzs'] = plan.price_uzs
+            elif coin_pack_id:
+                pack = CoinPack.objects.get(id=coin_pack_id, is_active=True)
+                payment_data['coin_pack'] = pack
+                payment_data['amount_uzs'] = pack.price_uzs
+
+            payment = Payment.objects.create(**payment_data)
+
+            return Response({
+                'success': True,
+                'message': 'To\'lov so\'rovi yuborildi. Admin tasdiqlashini kuting.',
+                'payment_id': payment.id,
+                'status': payment.status,
+                'amount': payment.amount_uzs,
+            }, status=status.HTTP_201_CREATED)
+
+        except SubscriptionPlan.DoesNotExist:
+            return Response({'error': 'Plan topilmadi'}, status=status.HTTP_404_NOT_FOUND)
+        except CoinPack.DoesNotExist:
+            return Response({'error': 'Coin pack topilmadi'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MyPaymentsView(generics.ListAPIView):
+    """
+    Foydalanuvchining o'z to'lovlari ro'yxati.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        payments = Payment.objects.filter(user=request.user).order_by('-created_at')[:20]
+
+        results = []
+        for p in payments:
+            results.append({
+                'id': p.id,
+                'amount_uzs': p.amount_uzs,
+                'status': p.status,
+                'provider': p.provider,
+                'plan_name': p.plan.name if p.plan else None,
+                'coin_pack_name': p.coin_pack.name if p.coin_pack else None,
+                'receipt_image_url': p.receipt_image.url if p.receipt_image else None,
+                'created_at': p.created_at.isoformat(),
+            })
+
+        return Response({
+            'success': True,
+            'data': results,
+        })
+
+
+class UsageLimitsView(generics.RetrieveAPIView):
+    """
+    Foydalanuvchining joriy tarif limitlari va foydalanish holati.
+    Dashboard uchun asosiy endpoint.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        from .entitlement_service import EntitlementService
+        summary = EntitlementService.get_usage_limits_summary(request.user)
+        return Response({'success': True, 'data': summary})
+
+
+class CoinServiceCostsView(generics.ListAPIView):
+    """
+    AI xizmatlarining coin narxlari ro'yxati.
+    Frontend uchun — coin modal'da ko'rsatish.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        from .models import CoinServiceCost
+        costs = CoinServiceCost.objects.filter(is_active=True)
+        data = [
+            {
+                'service_code': c.service_code,
+                'name': c.name,
+                'cost_coins': c.cost_coins,
+            }
+            for c in costs
+        ]
+        return Response({'success': True, 'data': data})

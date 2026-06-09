@@ -36,13 +36,33 @@ class UserProfile(models.Model):
 
     email_verified = models.BooleanField(default=False)
 
-
+    # IELTS Goals
     target_band_score = models.FloatField(blank=True, null=True)
     target_date = models.DateField(blank=True, null=True)
+    current_band_score = models.FloatField(blank=True, null=True, help_text="Hozirgi tahminiy daraja")
+    daily_study_hours = models.FloatField(blank=True, null=True, help_text="Kuniga qancha soat sarflay oladi")
+    exam_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('academic', 'Academic'),
+            ('general', 'General Training'),
+        ],
+        blank=True, null=True,
+    )
+
+    # Skills assessment
     listening_score = models.FloatField(default=0)
     reading_score = models.FloatField(default=0)
     writing_score = models.FloatField(default=0)
     speaking_score = models.FloatField(default=0)
+
+    # Weak and strong points
+    weak_skills = models.JSONField(blank=True, null=True, help_text="Zaif tomonlari ['listening', 'writing']")
+    strong_skills = models.JSONField(blank=True, null=True, help_text="Kuchli tomonlari ['reading', 'speaking']")
+
+    # Onboarding completed
+    onboarding_completed = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -51,9 +71,7 @@ class UserProfile(models.Model):
 
     def has_unlimited_access(self):
         """Foydalanuvchining cheksiz kirish huquqi borligini tekshirish"""
-        # Hozircha false qaytaramiz, keyinchalik subscription ga bog'lash mumkin
         return False
-
 
     class Meta:
         ordering = ['-created_at']
