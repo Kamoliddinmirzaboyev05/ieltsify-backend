@@ -21,7 +21,7 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
