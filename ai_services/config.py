@@ -61,7 +61,6 @@ class AIConfig:
 
         for w in warnings:
             logger.warning(w)
-            print(w)
 
         return warnings
 

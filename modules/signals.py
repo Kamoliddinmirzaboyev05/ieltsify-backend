@@ -3,6 +3,9 @@ from django.dispatch import receiver
 from .models import ReadingPassage
 
 import re
+import logging
+
+logger = logging.getLogger('modules')
 
 @receiver(post_save, sender=ReadingPassage)
 def calculate_word_count(sender, instance, created, **kwargs):
@@ -19,5 +22,5 @@ def calculate_word_count(sender, instance, created, **kwargs):
             instance.word_count = len(words)
             instance.save(update_fields=['word_count'])
         except Exception as e:
-            # Agar xato bo‘lsa, silent fail
-            print(f"Word count hisoblashda xato: {e}")
+            # Agar xato bo‘lsa, log qilamiz (silent fail emas)
+            logger.warning(f"Word count hisoblashda xato: {e}")

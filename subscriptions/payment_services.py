@@ -75,46 +75,65 @@ class PaymentGatewayService:
         return hashlib.md5(sign_string.encode()).hexdigest()
     
     @staticmethod
-    def verify_click_callback(data: dict) -> bool:
-        """Click callback ni tekshirish"""
+    def _amount_matches(data: dict, payment, multiplier: int = 1) -> bool:
+        """Callbackdagi summa serverdagi haqiqiy summaga mosligini tekshirish.
+        Bu narxni o'zgartirib yuborish (tampering) ni to'sadi."""
+        try:
+            received = int(float(data.get('amount')))
+        except (TypeError, ValueError):
+            return False
+        return received == int(payment.amount_uzs) * multiplier
+
+    @staticmethod
+    def verify_click_callback(data: dict, payment) -> bool:
+        """Click callback ni tekshirish.
+
+        XAVFSIZLIK: secret key sozlanmagan bo'lsa, callback FAQAT DEBUG
+        rejimida qabul qilinadi. Productionда rad etiladi — aks holda
+        har kim soxta callback yuborib tekin obuna olishi mumkin.
+        """
         if not settings.CLICK_SECRET_KEY:
-            return True  # Secret key bo'lmasa, tekshirmaymiz
-        
-        # Click dan kelgan imzoni tekshirish
+            return bool(settings.DEBUG)
+
         received_sign = data.get('sign')
         if not received_sign:
             return False
-        
-        # Imzo generatsiya qilish
+
+        # Imzoni SERVERDAGI ishonchli summa bilan hisoblaymiz (clientникидан emas)
         sign_data = {
-            'service_id': data.get('service_id'),
-            'merchant_trans_id': data.get('merchant_trans_id'),
-            'amount': data.get('amount'),
+            'service_id': settings.CLICK_SERVICE_ID,
+            'merchant_trans_id': payment.id,
+            'amount': payment.amount_uzs,
         }
         expected_sign = PaymentGatewayService._generate_click_sign(sign_data)
-        
-        return hmac.compare_digest(received_sign, expected_sign)
-    
+
+        if not hmac.compare_digest(str(received_sign), expected_sign):
+            return False
+
+        # Summa serverdagiga mos kelishini ham alohida tekshiramiz
+        return PaymentGatewayService._amount_matches(data, payment)
+
     @staticmethod
-    def verify_payme_callback(data: dict) -> bool:
-        """Payme callback ni tekshirish"""
+    def verify_payme_callback(data: dict, payment) -> bool:
+        """Payme callback ni tekshirish (Payme summani tiyinlarda yuboradi)."""
         if not settings.PAYME_SECRET_KEY:
-            return True  # Secret key bo'lmasa, tekshirmaymiz
-        
-        # Payme dan kelgan imzoni tekshirish
+            return bool(settings.DEBUG)
+
         received_sign = data.get('sign')
         if not received_sign:
             return False
-        
-        # Imzo generatsiya qilish
+
         sign_data = {
-            'service_id': data.get('service_id'),
-            'merchant_trans_id': data.get('merchant_trans_id'),
-            'amount': data.get('amount'),
+            'service_id': settings.PAYME_SERVICE_ID,
+            'merchant_trans_id': payment.id,
+            'amount': payment.amount_uzs * 100,
         }
         expected_sign = PaymentGatewayService._generate_payme_sign(sign_data)
-        
-        return hmac.compare_digest(received_sign, expected_sign)
+
+        if not hmac.compare_digest(str(received_sign), expected_sign):
+            return False
+
+        return PaymentGatewayService._amount_matches(data, payment, multiplier=100)
 
 
 class EnhancedPaymentService:

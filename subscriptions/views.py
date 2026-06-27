@@ -275,13 +275,13 @@ class PaymentCallbackView(generics.CreateAPIView):
 
         # Security tekshiruv - callback ni tasdiqlash
         if payment.provider == Payment.PROVIDER_CLICK:
-            if not PaymentGatewayService.verify_click_callback(request.data):
+            if not PaymentGatewayService.verify_click_callback(request.data, payment):
                 return Response(
                     {"error": "Invalid Click callback signature"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         elif payment.provider == Payment.PROVIDER_PAYME:
-            if not PaymentGatewayService.verify_payme_callback(request.data):
+            if not PaymentGatewayService.verify_payme_callback(request.data, payment):
                 return Response(
                     {"error": "Invalid Payme callback signature"},
                     status=status.HTTP_400_BAD_REQUEST

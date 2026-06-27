@@ -17,6 +17,49 @@ class GeminiProvider:
     BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
     @classmethod
+    def generate_text(cls, prompt: str, json_mode: bool = False, temperature: float = 0.4) -> dict:
+        """Umumiy Gemini matn generatsiyasi (chat va baholash uchun).
+
+        Qaytadi: {'text': str, 'status': 'success'} yoki {'error': str, 'status': 'failed'}.
+        Kalit faqat shu yerda (serverda) ishlatiladi — frontendга chiqmaydi.
+        """
+        if not AIConfig.GOOGLE_AI_API_KEY:
+            return {'error': 'Gemini API key not configured', 'status': 'failed'}
+
+        model = AIConfig.GEMINI_WRITING_PRIMARY_MODEL
+        generation_config = {
+            "temperature": temperature,
+            "maxOutputTokens": 4096,
+        }
+        if json_mode:
+            generation_config["responseMimeType"] = "application/json"
+
+        try:
+            url = f"{cls.BASE_URL}/{model}:generateContent?key={AIConfig.GOOGLE_AI_API_KEY}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": generation_config,
+            }
+            response = requests.post(url, json=payload, timeout=AIConfig.AI_PROVIDER_TIMEOUT_MS / 1000)
+
+            if response.status_code != 200:
+                logger.error(f"Gemini error: {response.status_code} - {response.text[:200]}")
+                return {'error': f'Gemini API error: {response.status_code}', 'status': 'failed'}
+
+            data = response.json()
+            text = data['candidates'][0]['content']['parts'][0]['text']
+            return {'text': text, 'status': 'success'}
+
+        except requests.Timeout:
+            return {'error': 'AI request timeout', 'status': 'failed'}
+        except (KeyError, IndexError) as e:
+            logger.error(f"Gemini response shape error: {e}")
+            return {'error': 'Unexpected AI response', 'status': 'failed'}
+        except Exception as e:
+            logger.error(f"Gemini generate_text error: {e}")
+            return {'error': str(e), 'status': 'failed'}
+
+    @classmethod
     def analyze_writing(cls, task_type: str, question: str, essay: str, image_url: str = None) -> dict:
         """Writing essay'ni Gemini orqali baholash."""
         if not AIConfig.GOOGLE_AI_API_KEY:

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import ListeningTest, ReadingPassage, WritingTask, VocabularyWord, ListeningMaterial, SmartArticle
 from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 
 class ListeningTestDetailSerializer(serializers.ModelSerializer):
@@ -301,7 +302,7 @@ class ListeningMaterialCreateUpdateSerializer(serializers.ModelSerializer):
         validator = URLValidator()
         try:
             validator(value)
-        except:
+        except DjangoValidationError:
             raise serializers.ValidationError("Iltimos, to‘g‘ri YouTube URL kiriting.")
         if 'youtube.com' not in value and 'youtu.be' not in value:
             raise serializers.ValidationError("URL YouTube videoga tegishli bo'lishi kerak.")

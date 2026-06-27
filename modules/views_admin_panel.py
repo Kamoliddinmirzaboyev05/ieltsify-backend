@@ -51,24 +51,30 @@ def admin_users_list(request):
 
         total = users.count()
         offset = (page - 1) * limit
-        users = users[offset:offset + limit]
+        users = list(users[offset:offset + limit])
+
+        # N+1 ni oldini olish: hamma wallet va aktiv obunalarni bitta
+        # so'rovda olib, xotirada map qilamiz (sahifa uchun ~3 query).
+        user_ids = [u.id for u in users]
+        now = timezone.now()
+        wallet_map = {
+            w.user_id: w.balance
+            for w in CoinWallet.objects.filter(user_id__in=user_ids)
+        }
+        sub_map = {}
+        for sub in (
+            UserSubscription.objects
+            .filter(user_id__in=user_ids, is_active=True,
+                    start_at__lte=now, end_at__gte=now)
+            .select_related('plan')
+            .order_by('user_id', '-end_at')
+        ):
+            sub_map.setdefault(sub.user_id, sub)
 
         results = []
         for user in users:
-            # Wallet balance
-            wallet_balance = 0
-            try:
-                wallet = CoinWallet.objects.get(user=user)
-                wallet_balance = wallet.balance
-            except CoinWallet.DoesNotExist:
-                pass
-
-            # Active subscription
-            active_sub = UserSubscription.objects.filter(
-                user=user, is_active=True,
-                start_at__lte=timezone.now(),
-                end_at__gte=timezone.now()
-            ).first()
+            wallet_balance = wallet_map.get(user.id, 0)
+            active_sub = sub_map.get(user.id)
 
             results.append({
                 'id': str(user.id),
