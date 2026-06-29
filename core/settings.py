@@ -84,17 +84,25 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS: .env dagi CORS_ALLOWED_ORIGINS (vergul bilan) ishlatiladi.
-# Faqat ro'yxat bo'sh bo'lsa va DEBUG=True bo'lsa hammaga ruxsat (lokal ishlash uchun).
+# CORS: .env dagi CORS_ALLOWED_ORIGINS (vergul bilan) + ma'lum production origin'lar.
+# Production frontend domenlari har doim ruxsat etiladi (env unutilsa ham buzilmaydi).
+DEFAULT_CORS_ORIGINS = [
+    'https://ieltsfy.uz',
+    'https://www.ieltsfy.uz',
+    'https://admin.ieltsfy.uz',
+]
 _cors_origins = [o.strip() for o in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
-if _cors_origins:
-    CORS_ALLOWED_ORIGINS = _cors_origins
-    CORS_ALLOW_ALL_ORIGINS = False
-else:
-    CORS_ALLOW_ALL_ORIGINS = DEBUG
+# env + default'larni birlashtirish, tartibni saqlab takrorlarni olib tashlash
+CORS_ALLOWED_ORIGINS = list(dict.fromkeys(_cors_origins + DEFAULT_CORS_ORIGINS))
+# DEBUG=True bo'lsa lokal ishlash uchun hammaga ruxsat.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+# JWT body orqali yuboriladi, lekin cookie/credential'li so'rovlar uchun xavfsiz default.
+CORS_ALLOW_CREDENTIALS = True
 
-# CSRF: admin/sessiya uchun ishonchli domenlar (.env dan vergul bilan)
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+# CSRF: admin/sessiya uchun ishonchli domenlar (.env + ma'lum production domenlar)
+DEFAULT_CSRF_TRUSTED = DEFAULT_CORS_ORIGINS + ['https://api.ieltsfy.uz']
+_csrf_origins = [o.strip() for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()]
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(_csrf_origins + DEFAULT_CSRF_TRUSTED))
 
 SWAGGER_SETTINGS = {
    'SECURITY_DEFINITIONS': {
